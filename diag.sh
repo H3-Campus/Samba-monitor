@@ -22,7 +22,7 @@ log_message() {
 
 # Vérification des outils LDAP
 check_ldap_tools() {
-    local ldap_packages=("ldap-utils" "slapd")
+    local ldap_packages=("ldap-utils")
     local missing_packages=()
 
     for pkg in "${ldap_packages[@]}"; do
