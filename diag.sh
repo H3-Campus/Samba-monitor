@@ -71,10 +71,9 @@ check_samba_processes() {
 # Vérification détaillée Kerberos
 check_kerberos() {
     local kerberos_checks=()
-    local password
 
     # Demander interactivement le mot de passe
-    read -s -p "Mot de passe pour $ADMIN_USER : " password
+    #read -s -p "Mot de passe pour $ADMIN_USER : " password
     echo
 
     local kdc_processes=$(samba-tool processes | grep "kdc_server")
@@ -141,7 +140,7 @@ generate_html_report() {
     </style>
 </head>
 <body>
-    <h1>Rapport de Monitoring Samba AD DC - $(date '+%d/%m/%Y %H:%M:%S')</h1>
+    <h1>Rapport de Monitoring Samba - $(hostname) - $(date '+%d/%m/%Y %H:%M:%S')</h1>
 
     <h2>Processus Samba AD</h2>
     <table>
@@ -173,7 +172,7 @@ send_email_report() {
         if command -v sendmail &> /dev/null; then
             (
                 echo "To: $ADMIN_EMAIL"
-                echo "Subject: Rapport Monitoring Samba AD DC - $(date '+%d/%m/%Y')"
+                echo "Subject: Rapport Monitoring Samba - $(hostname) - $(date '+%d/%m/%Y')"
                 echo "Content-Type: text/html"
                 echo ""
                 cat "$REPORT_FILE"
@@ -182,7 +181,7 @@ send_email_report() {
         elif command -v ssmtp &> /dev/null; then
             (
                 echo "To: $ADMIN_EMAIL"
-                echo "Subject: Rapport Monitoring Samba AD DC - $(date '+%d/%m/%Y')"
+                echo "Subject: Rapport Monitoring Samba - $(hostname) - $(date '+%d/%m/%Y')"
                 echo "Content-Type: text/html"
                 echo ""
                 cat "$REPORT_FILE"
