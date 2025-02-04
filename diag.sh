@@ -264,21 +264,6 @@ generate_html_report() {
 <body>
     <h1>Rapport de Monitoring Samba AD DC - $SERVER_NAME - $(date '+%d/%m/%Y %H:%M:%S')</h1>
 
-    <h2>Synchronisation de l'heure</h2>
-    <table>
-        $(check_time_sync)
-    </table>
-
-    <h2>État des ports UFW</h2>
-    <table>
-        $(check_ufw_ports)
-    </table>
-
-    <h2>État de la Base de Données AD</h2>
-    <table>
-        $(check_database_consistency)
-    </table>
-
     <h2>Processus Samba AD</h2>
     <table>
         $(check_samba_processes)
@@ -297,6 +282,21 @@ generate_html_report() {
     <h2>Serveur DNS</h2>
     <table>
         $(check_dns)
+    </table>
+
+     <h2>Synchronisation de l'heure</h2>
+    <table>
+        $(check_time_sync)
+    </table>
+
+    <h2>État des ports UFW</h2>
+    <table>
+        $(check_ufw_ports)
+    </table>
+
+    <h2>État de la Base de Données AD</h2>
+    <table>
+        $(check_database_consistency)
     </table>
 </body>
 </html>
