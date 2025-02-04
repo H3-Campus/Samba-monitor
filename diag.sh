@@ -5,7 +5,7 @@
 # Configuration
 LOG_FILE="/var/log/samba-ad-monitor.log"
 REPORT_FILE="/tmp/samba_ad_report_$(date +%Y%m%d_%H%M%S).html"
-ADMIN_EMAIL="j.fontaine@h3campus.fr"
+ADMIN_EMAIL="serviceinfo@h3campus.fr"
 DOMAIN_NAME=$(hostname -d)
 REALM=$(samba-tool domain info $(hostname -f) | grep "Realm" | cut -d: -f2 | tr -d '[:space:]')
 ADMIN_USER="Administrator"
