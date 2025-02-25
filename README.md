@@ -64,6 +64,7 @@ Script de surveillance automatisé pour vérifier l'intégrité et le fonctionne
     - Redémarrer le service DNS
 4. **Configuration Domaine**
     - Vérifier l'intégrité de la base de données
+5. **Process Tis-Sysvol**
 
 ### Étape 3 : Remontée d'Information
 
