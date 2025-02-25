@@ -12,10 +12,12 @@ ADMIN_USER="Administrator"
 SERVER_NAME=$(hostname)
 NTP_SERVER="pool.ntp.org"
 
+
 # Ports requis pour Samba AD
 REQUIRED_PORTS=(
     53    # DNS
     88    # Kerberos
+    123	  # NTP
     139   # NetBIOS
     389   # LDAP
     445   # SMB
@@ -23,6 +25,11 @@ REQUIRED_PORTS=(
     636   # LDAPS
     3268  # Global Catalog
     3269  # Global Catalog SSL
+    8385  # Port utilisé par Syncthing pour l'interface du serveur de relais (STRelaySrv)  
+    22000 # Port utilisé par Syncthing pour les transferts de fichiers  
+    22001 # Port utilisé par Syncthing pour les connexions relayées  
+    22027 # Port utilisé par Syncthing pour la découverte globale  
+    161   # Port utilisé par SNMP (Simple Network Management Protocol) pour les requêtes de gestion 
 )
 
 # Couleurs pour le rapport HTML
@@ -49,7 +56,7 @@ check_ldap_tools() {
     if [ ${#missing_packages[@]} -gt 0 ]; then
         log_message "Installation des paquets LDAP manquants : ${missing_packages[*]}"
         apt-get update
-        apt-get install -y "${missing_packages[@]}"
+apt-get install -y "${missing_packages[@]}"
     fi
 }
 
@@ -120,13 +127,65 @@ check_samba_processes() {
     echo "${process_status[@]}"
 }
 
+check_syncthing_processes() {
+    local processes_to_check=(
+        "syncthing" 
+    )
+    local process_status=()
+    #log_message "Début de la vérification des processus Syncthing"
+    
+    # Correction: utilisation de ps ou pgrep pour vérifier les processus
+    local syncthing_processes=$(ps aux | awk '{print $11}' | sort | uniq)
+    for proc in "${processes_to_check[@]}"; do
+        if echo "$syncthing_processes" | grep -q "$proc"; then
+            process_status+=("<tr style='background-color: $COLOR_GREEN;'><td>$proc</td><td>Actif</td></tr>")
+        else
+            process_status+=("<tr style='background-color: $COLOR_RED;'><td>$proc</td><td>Inactif</td></tr>")
+        fi
+    done
+    echo "${process_status[@]}"
+}
+
+check_tis_services() {
+    local services_to_check=(
+        "tis-sysvolsync"
+        "tis-sysvolacl"
+    )
+    local service_status=()
+    #log_message "Début de la vérification des services TIS"
+    
+    for service in "${services_to_check[@]}"; do
+        # Vérifier si le service est activé (enabled au démarrage)
+        if systemctl is-enabled "$service" &>/dev/null; then
+            local enabled_status="Activé au démarrage"
+            local enabled_color="$COLOR_GREEN"
+        else
+            local enabled_status="Non activé au démarrage"
+            local enabled_color="$COLOR_RED"
+        fi
+        
+        # Vérifier si le service est démarré (running)
+        if systemctl is-active "$service" &>/dev/null; then
+            local active_status="Démarré"
+            local active_color="$COLOR_GREEN"
+        else
+            local active_status="Arrêté"
+            local active_color="$COLOR_RED"
+        fi
+        
+        service_status+=("<tr><td style='background-color: $enabled_color;'>$service</td><td style='background-color: $enabled_color;'>$enabled_status</td><td style='background-color: $active_color;'>$active_status</td></tr>")
+    done
+    
+    echo "${service_status[@]}"
+}
+
 # Vérification détaillée Kerberos
 check_kerberos() {
     local kerberos_checks=()
-    local password
+    local password="Linux741!"
 
     # Demander interactivement le mot de passe
-    read -s -p "Mot de passe pour $ADMIN_USER : " password
+    #read -s -p "Mot de passe pour $ADMIN_USER : " password
     echo
 
     local kdc_processes=$(samba-tool processes | grep "kdc_server")
@@ -191,7 +250,7 @@ check_time_sync() {
     if command -v chronyc &> /dev/null; then
         if chronyc tracking | grep -q "^Leap status.*Normal"; then
             local offset=$(chronyc tracking | grep "Last offset" | awk '{print $4}')
-            if (( $(echo "$offset < 1.0" | bc -l) )); then
+           if [ "$(echo "$offset < 1.0" | bc -l)" -eq 1 ]; then
                 time_checks+=("<tr style='background-color: $COLOR_GREEN;'><td>Synchronisation NTP (chronyd)</td><td>Synchronisé (offset: ${offset}s)</td></tr>")
             else
                 time_checks+=("<tr style='background-color: $COLOR_YELLOW;'><td>Synchronisation NTP (chronyd)</td><td>Offset important: ${offset}s</td></tr>")
@@ -205,7 +264,7 @@ check_time_sync() {
     if command -v ntpq &> /dev/null; then
         if ntpq -p &> /dev/null; then
             local offset=$(ntpq -c rv | grep offset | cut -d= -f2)
-            if (( $(echo "$offset < 1000" | bc -l) )); then
+            if [ "$(echo "$offset < 1.0" | bc -l)" -eq 1 ]; then
                 time_checks+=("<tr style='background-color: $COLOR_GREEN;'><td>Synchronisation NTP (ntpd)</td><td>Synchronisé (offset: ${offset}ms)</td></tr>")
             else
                 time_checks+=("<tr style='background-color: $COLOR_YELLOW;'><td>Synchronisation NTP (ntpd)</td><td>Offset important: ${offset}ms</td></tr>")
@@ -268,7 +327,17 @@ generate_html_report() {
     <table>
         $(check_samba_processes)
     </table>
-
+    
+    <h2>Processus Syncthing Sysvol</h2>
+    <table>
+        $(check_syncthing_processes)
+    </table>
+    
+    <h2>Processus tis-sysvol services</h2>
+    <table>
+        $(check_tis_services)
+    </table>
+    
     <h2>Authentification Kerberos</h2>
     <table>
         $(check_kerberos)
