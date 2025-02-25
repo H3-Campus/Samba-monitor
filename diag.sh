@@ -12,7 +12,6 @@ ADMIN_USER="Administrator"
 SERVER_NAME=$(hostname)
 NTP_SERVER="pool.ntp.org"
 
-
 # Ports requis pour Samba AD
 REQUIRED_PORTS=(
     53    # DNS
@@ -243,39 +242,34 @@ check_time_sync() {
     # Vérifier si ntpd ou chronyd est installé
     if ! command -v ntpstat &> /dev/null && ! command -v chronyc &> /dev/null; then
         time_checks+=("<tr style='background-color: $COLOR_RED;'><td>Service NTP</td><td>Non installé</td></tr>")
+        echo "${time_checks[@]}"
         return
     fi
 
     # Vérifier la synchronisation avec chronyd
     if command -v chronyc &> /dev/null; then
         if chronyc tracking | grep -q "^Leap status.*Normal"; then
-            local offset=$(chronyc tracking | grep "Last offset" | awk '{print $4}')
-           if [ "$(echo "$offset < 1.0" | bc -l)" -eq 1 ]; then
-                time_checks+=("<tr style='background-color: $COLOR_GREEN;'><td>Synchronisation NTP (chronyd)</td><td>Synchronisé (offset: ${offset}s)</td></tr>")
+            # Extraire l'offset et supprimer le signe "+"
+            local offset=$(chronyc tracking | awk '/Last offset/ {print $4}' | sed 's/^+//')
+
+            # Vérifier si l'offset est bien un nombre avant d'utiliser bc
+            if [[ "$offset" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                if (( $(echo "$offset < 1.0" | bc -l) )); then
+                    time_checks+=("<tr style='background-color: $COLOR_GREEN;'><td>Synchronisation NTP (chronyd)</td><td>Synchronisé (offset: ${offset}s)</td></tr>")
+                else
+                    time_checks+=("<tr style='background-color: $COLOR_YELLOW;'><td>Synchronisation NTP (chronyd)</td><td>Offset important: ${offset}s</td></tr>")
+                fi
             else
-                time_checks+=("<tr style='background-color: $COLOR_YELLOW;'><td>Synchronisation NTP (chronyd)</td><td>Offset important: ${offset}s</td></tr>")
+                time_checks+=("<tr style='background-color: $COLOR_RED;'><td>Synchronisation NTP (chronyd)</td><td>Erreur: Offset invalide (${offset})</td></tr>")
             fi
         else
             time_checks+=("<tr style='background-color: $COLOR_RED;'><td>Synchronisation NTP (chronyd)</td><td>Non synchronisé</td></tr>")
         fi
     fi
 
-    # Vérifier la synchronisation avec ntpd
-    if command -v ntpq &> /dev/null; then
-        if ntpq -p &> /dev/null; then
-            local offset=$(ntpq -c rv | grep offset | cut -d= -f2)
-            if [ "$(echo "$offset < 1.0" | bc -l)" -eq 1 ]; then
-                time_checks+=("<tr style='background-color: $COLOR_GREEN;'><td>Synchronisation NTP (ntpd)</td><td>Synchronisé (offset: ${offset}ms)</td></tr>")
-            else
-                time_checks+=("<tr style='background-color: $COLOR_YELLOW;'><td>Synchronisation NTP (ntpd)</td><td>Offset important: ${offset}ms</td></tr>")
-            fi
-        else
-            time_checks+=("<tr style='background-color: $COLOR_RED;'><td>Synchronisation NTP (ntpd)</td><td>Non synchronisé</td></tr>")
-        fi
-    fi
-
     echo "${time_checks[@]}"
 }
+
 
 # Vérification des ports UFW
 check_ufw_ports() {
